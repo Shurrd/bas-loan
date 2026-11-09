@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { divHalfUp, parseKobo } from "./money";
+import { divHalfUp, formatKobo, formatNaira, parseNaira } from "./money";
 
 describe("divHalfUp", () => {
     it("rounds exact halves up and anything below down", () => {
@@ -17,11 +17,47 @@ describe("divHalfUp", () => {
     });
 });
 
-describe("parseKobo", () => {
-    it("accepts digit strings only", () => {
-        expect(parseKobo("120000000")).toBe(120_000_000n);
-        for (const bad of ["", "-1", "1.5", "1e3", " 1", "abc"]) {
-            expect(() => parseKobo(bad)).toThrow();
+describe("parseNaira", () => {
+    it("reads naira strings into kobo without a float", () => {
+        expect(parseNaira("1200000")).toBe(120_000_000n);
+        expect(parseNaira("1,200,000.50")).toBe(120_000_050n);
+        expect(parseNaira("0.05")).toBe(5n);
+        expect(parseNaira("10.5")).toBe(1_050n);
+        expect(parseNaira(" 5000000000.00 ")).toBe(500_000_000_000n);
+    });
+
+    it("rejects more than 2 decimal places and malformed input", () => {
+        for (const bad of [
+            "1.234",
+            "1.001",
+            "",
+            ".5",
+            "1.",
+            "-5",
+            "1e3",
+            "12,34",
+            "₦100",
+            "1,2000",
+        ]) {
+            expect(parseNaira(bad)).toBeNull();
         }
+    });
+});
+
+describe("formatNaira", () => {
+    it("groups thousands and always shows two decimals", () => {
+        expect(formatNaira(120_000_000n)).toBe("₦1,200,000.00");
+        expect(formatNaira(5n)).toBe("₦0.05");
+        expect(formatNaira(94_247n)).toBe("₦942.47");
+        expect(formatNaira(500_000_000_000n)).toBe("₦5,000,000,000.00");
+        expect(formatNaira(-1_050n)).toBe("-₦10.50");
+    });
+});
+
+describe("formatKobo", () => {
+    it("groups thousands and keeps the sign", () => {
+        expect(formatKobo(94_247n)).toBe("94,247 kobo");
+        expect(formatKobo(0n)).toBe("0 kobo");
+        expect(formatKobo(-19_263_026n)).toBe("-19,263,026 kobo");
     });
 });

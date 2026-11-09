@@ -2,9 +2,8 @@ import { buildSchedule, settleInvoice } from "@lending/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDatabase } from "@/db";
 import { getEntryLines, postEntry } from "@/services/ledger";
-import { createInvoice } from "@/services/invoice";
-import { createLoan } from "@/services/loan";
 import { disbursementLines, invoiceSettlementLines } from "@/services/posting";
+import { insertInvoice, insertLoan } from "@/test-helpers";
 
 describe("loan disbursement", () => {
     it("posts Worked Example 1 as Dr Loans Receivable, Cr Cash for 120,000,000", () => {
@@ -17,7 +16,7 @@ describe("loan disbursement", () => {
         };
         expect(buildSchedule(terms)).toHaveLength(6);
 
-        const loanId = createLoan(db, terms);
+        const loanId = insertLoan(db, terms);
         const entryId = postEntry(db, {
             kind: "disbursement",
             entryDate: terms.disbursementDate,
@@ -53,11 +52,10 @@ describe("invoice settlement", () => {
     };
 
     const invoice = (faceValue: bigint, tenorDays: number) =>
-        createInvoice(db, {
+        insertInvoice(db, {
             faceValue,
             tenorDays,
-            advanceDate: "2024-12-31",
-            dueDate: "2025-03-01",
+            fundingDate: "2024-12-31",
         });
 
     beforeEach(() => {

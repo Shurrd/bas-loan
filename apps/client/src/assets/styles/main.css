@@ -1,0 +1,28 @@
+.nav-link-label {
+    @apply text-cloud-500 ml-1 rounded-none text-[10px] uppercase;
+}
+
+.error-style {
+    @apply border border-danger focus:border-danger focus:ring-0;
+}
+
+.error-message {
+    @apply text-danger mt-1 text-xs font-medium;
+}
+
+body {
+    font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+    @apply antialiased;
+}
+
+/* react-select draws its own box, so its search input must not take the form-input look from base.css */
+input[role="combobox"],
+input[role="combobox"]:focus {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    outline: 0;
+}

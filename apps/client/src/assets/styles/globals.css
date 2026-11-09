@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./base.css";
+@import "./shadcn.theme.css";
+@import "./theme.css";
+@import "./main.css";
+
+@plugin "@tailwindcss/forms";
+
+@custom-variant dark (&:is(.dark *));

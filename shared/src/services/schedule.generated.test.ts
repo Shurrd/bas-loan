@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addMonths } from "../lib/date";
+import { parseRate } from "../lib/rate";
 import type { LoanTerms } from "../types/loan";
 import { buildSchedule } from "./schedule";
 
@@ -24,11 +25,12 @@ function randomBigInt(random: () => number, min: bigint, max: bigint): bigint {
     return min + (bits % span);
 }
 
+// Rates from 0.5 to 60 with 0 to 3 decimals, built from integers so no float touches a rate
 function randomRate(random: () => number): string {
     const decimals = Math.floor(random() * 4);
-    const scale = 10 ** decimals;
-    const units = 0.5 * scale + Math.floor(random() * (60 * scale - 0.5 * scale + 1));
-    const text = String(Math.round(units));
+    const min = decimals === 0 ? 1n : 5n * 10n ** BigInt(decimals - 1);
+    const max = 60n * 10n ** BigInt(decimals);
+    const text = randomBigInt(random, min, max).toString();
     if (decimals === 0) return text;
     const padded = text.padStart(decimals + 1, "0");
     return `${padded.slice(0, -decimals)}.${padded.slice(-decimals)}`;
@@ -113,8 +115,9 @@ describe("generated term loan schedules", () => {
             expect(c.principal >= MIN_PRINCIPAL && c.principal <= MAX_PRINCIPAL).toBe(
                 true
             );
-            expect(Number(c.annualRatePercent)).toBeGreaterThanOrEqual(0.5);
-            expect(Number(c.annualRatePercent)).toBeLessThanOrEqual(60);
+            const rate = parseRate(c.annualRatePercent);
+            expect(rate.numerator * 200n >= rate.denominator).toBe(true); // at least 0.5%
+            expect(rate.numerator * 5n <= rate.denominator * 3n).toBe(true); // at most 60%
             expect(c.termMonths).toBeGreaterThanOrEqual(1);
             expect(c.termMonths).toBeLessThanOrEqual(60);
         }

@@ -1,11 +1,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import Database from "better-sqlite3";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDatabase } from "@/db";
-import { postEntry } from "@/services/ledger";
-import { createInvoice } from "@/services/invoice";
 import { createLoan } from "@/services/loan";
+import { saveQuote } from "@/services/quote";
+import { insertInvoice, insertLoan } from "@/test-helpers";
+import { postEntry } from "@/services/ledger";
 import { disbursementLines, invoiceAdvanceLines } from "@/services/posting";
 
 const insertEntry = (
@@ -27,7 +29,7 @@ describe("journal tables", () => {
 
     beforeEach(() => {
         db = openDatabase();
-        loanId = createLoan(db, {
+        loanId = insertLoan(db, {
             principal: 120_000_000n,
             annualRatePercent: "18",
             termMonths: 6,
@@ -84,11 +86,10 @@ describe("journal tables", () => {
     });
 
     it("rejects a second advance on the same invoice", () => {
-        const invoiceId = createInvoice(db, {
+        const invoiceId = insertInvoice(db, {
             faceValue: 100_000_000n,
             tenorDays: 60,
-            advanceDate: "2024-12-31",
-            dueDate: "2025-03-01",
+            fundingDate: "2024-12-31",
         });
         const advance = {
             kind: "invoice_advance",
@@ -107,7 +108,7 @@ describe("journal tables", () => {
     });
 
     it("rejects a line that points at a different loan than its entry", () => {
-        const other = createLoan(db, {
+        const other = insertLoan(db, {
             principal: 1_000n,
             annualRatePercent: "18",
             termMonths: 1,
@@ -136,7 +137,7 @@ describe("openDatabase", () => {
         try {
             const path = join(dir, "test.db");
             const first = openDatabase(path);
-            createLoan(first, {
+            insertLoan(first, {
                 principal: 1_000n,
                 annualRatePercent: "18",
                 termMonths: 1,
@@ -154,6 +155,62 @@ describe("openDatabase", () => {
             expect(loans.n).toBe(1n);
             expect(accounts.n).toBe(9n);
             second.close();
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("quotes", () => {
+    const terms = {
+        principal: 120_000_000n,
+        annualRatePercent: "18",
+        termMonths: 6,
+        disbursementDate: "2025-01-15",
+    };
+
+    it("allows one loan per quote at the database level", () => {
+        const db = openDatabase();
+        const { quoteId } = saveQuote(db, terms);
+        createLoan(db, quoteId);
+        expect(() => createLoan(db, quoteId)).toThrow(/UNIQUE/);
+    });
+
+    it("lets two quotes with identical terms each have a loan", () => {
+        const db = openDatabase();
+        createLoan(db, saveQuote(db, terms).quoteId);
+        expect(() => createLoan(db, saveQuote(db, terms).quoteId)).not.toThrow();
+    });
+
+    it("cannot be edited or deleted once saved", () => {
+        const db = openDatabase();
+        saveQuote(db, terms);
+        expect(() => db.prepare("UPDATE quotes SET principal = 1").run()).toThrow(
+            /append-only/
+        );
+        expect(() => db.prepare("DELETE FROM quotes").run()).toThrow(/append-only/);
+        expect(() =>
+            db.prepare("UPDATE quote_instalments SET interest = 1").run()
+        ).toThrow(/append-only/);
+        expect(() => db.prepare("DELETE FROM quote_instalments").run()).toThrow(
+            /append-only/
+        );
+    });
+
+    it("refuses a database file made before the schema changed, without touching it", () => {
+        const dir = mkdtempSync(join(tmpdir(), "lending-"));
+        try {
+            const path = join(dir, "old.db");
+            const old = new Database(path);
+            old.exec("CREATE TABLE loans (id INTEGER PRIMARY KEY, principal INTEGER)");
+            old.close();
+
+            expect(() => openDatabase(path)).toThrow(/older version/);
+
+            const check = new Database(path, { readonly: true });
+            const tables = check.prepare("SELECT name FROM sqlite_master").all();
+            expect(tables).toEqual([{ name: "loans" }]);
+            check.close();
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }

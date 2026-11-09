@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDatabase } from "@/db";
 import { LedgerError } from "@/lib/errors";
 import { getEntryLines, postEntry, reverseEntry } from "@/services/ledger";
-import { createInvoice } from "@/services/invoice";
-import { createLoan } from "@/services/loan";
 import { disbursementLines, invoiceAdvanceLines, paymentLines } from "@/services/posting";
+import { insertInvoice, insertLoan } from "@/test-helpers";
 import type { LedgerLine } from "@/types/ledger";
 
 const count = (db: Db, table: string) =>
@@ -19,7 +18,7 @@ describe("postEntry", () => {
 
     beforeEach(() => {
         db = openDatabase();
-        loanId = createLoan(db, {
+        loanId = insertLoan(db, {
             principal: 100_000n,
             annualRatePercent: "18",
             termMonths: 3,
@@ -101,7 +100,7 @@ describe("reverseEntry", () => {
 
     beforeEach(() => {
         db = openDatabase();
-        loanId = createLoan(db, {
+        loanId = insertLoan(db, {
             principal: 120_000_000n,
             annualRatePercent: "18",
             termMonths: 6,
@@ -166,11 +165,10 @@ describe("reverseEntry", () => {
     });
 
     it("keeps the invoice link when reversing an invoice entry", () => {
-        const invoiceId = createInvoice(db, {
+        const invoiceId = insertInvoice(db, {
             faceValue: 100_000_000n,
             tenorDays: 60,
-            advanceDate: "2024-12-31",
-            dueDate: "2025-03-01",
+            fundingDate: "2024-12-31",
         });
         const advanceId = postEntry(db, {
             kind: "invoice_advance",

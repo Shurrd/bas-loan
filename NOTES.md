@@ -2,33 +2,42 @@
 
 ## Money on the wire
 
-I send kobo as decimal strings and rates as decimal strings like "18.75". A JSON number is a double, and anything above 2^53 kobo (about ₦90 trillion) loses precision. The brief's top principal of ₦5bn is fine as a double, but intermediate products are not, and I did not want a rule that only holds inside a range. Strings parse straight into BigInt on both sides. Rates are parsed into exact fractions, so no float is involved at any step.
+Kobo and rates go as strings, such as "120000000" and "18.75". A JSON number is a double and loses precision above 2^53 kobo. Strings parse into BigInt and exact fractions, so no float touches money.
 
 ## Shared logic
 
-The client and server use one implementation in `shared`. Because of that, the parity test checks invariants and compares against an independent reference, rather than client against server.
+Client and server share one implementation in `shared`. The parity test checks the brief's invariants and every instalment against an independent high-precision reference. The client also previews from the same code and compares with the server quote. A differing kobo blocks approval.
+
+## How the flows work
+
+Approval sends only a saved `quoteId`, and one quote creates one loan or invoice. Each action reuses one idempotency key on retry. Confirming a payment recomputes the allocation and returns 409 if the loan's state version moved since the preview. The statement uses journal lines only, outstanding principal uses instalment state only, and the tie-out compares them. The statement downloads as a PDF built on the server.
 
 ## Assumptions
 
-- The first instalment is due one month after disbursement. Later dates are counted from the disbursement day and clamped to month end, so 31 Jan gives 28 Feb, then 31 Mar.
-- Term loans have no penalty or fee rates yet. The waterfall supports both, and they are 0.
-- A repayment has a payment date. Whatever is left after the instalments due by that date go to Unapplied Credit. It does not reduce principal and is not applied later.
-- A 0% annual rate is accepted and splits the principal evenly.
-- Invoice rates (80% advance, 36% discount, 0.2% per day penalty) are constants in `shared/src/lib/constant.ts`.
-- The invoice fee uses the agreed tenor, including when an invoice settles early. That is an assumption. The 96-days-overdue example only shows that overdue days do not extend the fee.
-- The ledger keeps the journal append-only with SQLite triggers. SQLite has no deferred constraints, so the two-line and balance checks run inside the posting transaction and roll the entry back, not in the schema.
-- A loan has one disbursement and an invoice one advance and one settlement, enforced by partial unique indexes. A reversed disbursement therefore cannot be posted again.
-- The last instalment can differ from the others by more than a few kobo on large loans. In my scan the worst was 141 kobo, at about ₦1.2bn, 55% and 60 months.
+- The first instalment is due one month after disbursement, clamped to month end.
+- Term loans have no penalty or fee rates yet. The waterfall supports both, and they are 0. A 0% rate is accepted.
+- What is left after the instalments due by the payment date goes to Unapplied Credit. It does not reduce principal and is not applied later.
+- The invoice fee uses the agreed tenor, including on early settlement. The 96-days-overdue example only shows that overdue days do not extend it. The 80%, 36% and 0.2% rates are constants.
+- SQLite has no deferred constraints, so balance checks run in the posting transaction. Triggers make the journal append-only.
+- A reversed disbursement cannot be posted again, since one disbursement per loan is a unique index.
+- The statement lists every ledger line of the loan, by date then entry. Tie-out difference is statement balance minus schedule outstanding.
+- A loan shows as Repaid when its outstanding principal is 0. Lists show the newest 100 records.
+- Naira input allows two decimals. The calendar shows dd/MM/yyyy, while state and the wire use YYYY-MM-DD.
+- On large loans the last instalment can differ by more than a few kobo (worst found: 141).
+
+## Input limits (mine, the brief gives none)
+
+- Principal and payment amounts: up to 9,223,372,036,854,775,807 kobo, the most SQLite stores.
+- Rate: 0 to 100 with at most 4 decimals. Term: 1 to 120 months.
+- Invoice face value up to ₦1 trillion, tenor 1 to 365 days, funding and settlement dates up to 2100-12-31. The calendar offers 2000 to 2100.
 
 ## Open questions
 
-- Early payoff. I follow Section 2 literally: a repayment only clears instalments due by the payment date, and the rest goes to Unapplied Credit without reducing principal. So paying the full balance before the due dates does not close the loan. The brief says hidden tests cover early payoff but never defines it. Allocation lives in one function, so a payoff rule can be added there if the hiring contact clarifies it.
-
-- Early settlement of an invoice. I charge the fee for the full agreed tenor even when the debtor pays before the due date. The brief does not say whether the fee should be cut to the days actually outstanding.
+- Early payoff. I follow Section 2 literally, so paying the full balance before the due dates does not close the loan. Allocation is one function, so a payoff rule can go there.
+- Early settlement of an invoice. I charge the full tenor fee. The brief does not say whether to cut it to the days outstanding.
 
 ## What I verified by hand
 
 ## Not finished
 
-- The server has the schema, ledger and posting rules only. No routes, idempotency, repayment allocation or screens yet.
 - Reversal has a function and tests but no endpoint or UI.

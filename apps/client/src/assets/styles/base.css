@@ -1,0 +1,47 @@
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    button:not(:disabled),
+    [role="button"]:not(:disabled) {
+        cursor: pointer;
+    }
+
+    [type="text"],
+    [type="email"],
+    [type="password"],
+    [type="number"],
+    [type="date"],
+    [type="tel"],
+    textarea,
+    select {
+        @apply border min-h-10.25 bg-background text-foreground 
+           read-only:bg-muted disabled:bg-secondary disabled:text-muted-foreground 
+           block w-full rounded-[8px] border-gray-300 py-2 pl-2 shadow-xs 
+           outline-none focus:border focus:border-primary focus:ring-0 
+           focus:ring-primary disabled:cursor-not-allowed;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    input[type="checkbox"] {
+        @apply h-5 w-5 rounded text-primary hover:cursor-pointer focus:ring-0;
+    }
+
+    label.input-label {
+        @apply mb-1 flex text-sm md:text-pmd font-medium text-cloud-700;
+    }
+
+    .input-control {
+        @apply h-10.25 text-pmd;
+    }
+}

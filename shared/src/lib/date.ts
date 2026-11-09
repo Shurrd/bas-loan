@@ -36,6 +36,13 @@ export const daysBetween = (earlier: string, later: string) => {
     );
 };
 
+const toIso = (year: number, month: number, day: number) =>
+    [
+        String(year).padStart(4, "0"),
+        String(month).padStart(2, "0"),
+        String(day).padStart(2, "0"),
+    ].join("-");
+
 // Clamps to month end: 31 Jan + 1 month = 28 Feb
 export const addMonths = (date: string, months: number) => {
     const { year, month, day } = parseDate(date);
@@ -44,9 +51,11 @@ export const addMonths = (date: string, months: number) => {
     const newMonth = (total % 12) + 1;
     const lastDay = new Date(Date.UTC(newYear, newMonth, 0)).getUTCDate();
 
-    return [
-        String(newYear).padStart(4, "0"),
-        String(newMonth).padStart(2, "0"),
-        String(Math.min(day, lastDay)).padStart(2, "0"),
-    ].join("-");
+    return toIso(newYear, newMonth, Math.min(day, lastDay));
+};
+
+export const addDays = (date: string, days: number) => {
+    const { year, month, day } = parseDate(date);
+    const next = new Date(Date.UTC(year, month - 1, day) + days * MS_PER_DAY);
+    return toIso(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate());
 };

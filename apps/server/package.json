@@ -4,15 +4,24 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "start": "tsx src/index.ts",
         "test": "vitest run",
         "typecheck": "tsc -p ."
     },
     "devDependencies": {
         "@types/better-sqlite3": "^9.6.0",
-        "@types/node": "^24.19.2"
+        "@types/express": "^5.0.6",
+        "@types/node": "^24.19.2",
+        "@types/pdfkit": "^0.17.7",
+        "pdf-lib": "^1.17.1",
+        "tsx": "^4.23.15"
     },
     "dependencies": {
+        "@fontsource/inter": "^5.3.0",
         "@lending/shared": "^0.0.0",
-        "better-sqlite3": "^13.0.3"
+        "better-sqlite3": "^13.0.3",
+        "express": "^5.3.0",
+        "pdfkit": "^0.20.2"
     }
 }

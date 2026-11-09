@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     type TEXT NOT NULL CHECK (type IN ('asset', 'liability', 'income'))
 );
 
-CREATE TABLE IF NOT EXISTS loans (
+CREATE TABLE IF NOT EXISTS quotes (
     id INTEGER PRIMARY KEY,
     principal INTEGER NOT NULL CHECK (principal > 0),
     annual_rate TEXT NOT NULL,
@@ -13,12 +13,66 @@ CREATE TABLE IF NOT EXISTS loans (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS invoices (
+CREATE TABLE IF NOT EXISTS quote_instalments (
+    quote_id INTEGER NOT NULL REFERENCES quotes (id),
+    number INTEGER NOT NULL CHECK (number > 0),
+    due_date TEXT NOT NULL,
+    interest INTEGER NOT NULL CHECK (interest >= 0),
+    principal INTEGER NOT NULL CHECK (principal > 0),
+    PRIMARY KEY (quote_id, number)
+);
+
+CREATE TABLE IF NOT EXISTS loans (
+    id INTEGER PRIMARY KEY,
+    quote_id INTEGER NOT NULL UNIQUE REFERENCES quotes (id),
+    principal INTEGER NOT NULL CHECK (principal > 0),
+    annual_rate TEXT NOT NULL,
+    term_months INTEGER NOT NULL CHECK (term_months > 0),
+    disbursement_date TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS loan_instalments (
+    loan_id INTEGER NOT NULL REFERENCES loans (id),
+    number INTEGER NOT NULL CHECK (number > 0),
+    due_date TEXT NOT NULL,
+    interest INTEGER NOT NULL CHECK (interest >= 0),
+    principal INTEGER NOT NULL CHECK (principal > 0),
+    penalty_due INTEGER NOT NULL DEFAULT 0 CHECK (penalty_due >= 0),
+    fee_due INTEGER NOT NULL DEFAULT 0 CHECK (fee_due >= 0),
+    interest_paid INTEGER NOT NULL DEFAULT 0,
+    principal_paid INTEGER NOT NULL DEFAULT 0,
+    penalty_paid INTEGER NOT NULL DEFAULT 0,
+    fee_paid INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (loan_id, number),
+    CHECK (interest_paid BETWEEN 0 AND interest),
+    CHECK (principal_paid BETWEEN 0 AND principal),
+    CHECK (penalty_paid BETWEEN 0 AND penalty_due),
+    CHECK (fee_paid BETWEEN 0 AND fee_due)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_quotes (
     id INTEGER PRIMARY KEY,
     face_value INTEGER NOT NULL CHECK (face_value > 0),
     tenor_days INTEGER NOT NULL CHECK (tenor_days >= 0),
-    advance_date TEXT NOT NULL,
+    funding_date TEXT NOT NULL,
     due_date TEXT NOT NULL,
+    advance INTEGER NOT NULL CHECK (advance > 0),
+    reserve INTEGER NOT NULL CHECK (reserve >= 0),
+    fee INTEGER NOT NULL CHECK (fee >= 0),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY,
+    quote_id INTEGER NOT NULL UNIQUE REFERENCES invoice_quotes (id),
+    face_value INTEGER NOT NULL CHECK (face_value > 0),
+    tenor_days INTEGER NOT NULL CHECK (tenor_days >= 0),
+    funding_date TEXT NOT NULL,
+    due_date TEXT NOT NULL,
+    advance INTEGER NOT NULL CHECK (advance > 0),
+    reserve INTEGER NOT NULL CHECK (reserve >= 0),
+    fee INTEGER NOT NULL CHECK (fee >= 0),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,3 +144,41 @@ WHEN NOT EXISTS (
 BEGIN
     SELECT RAISE(ABORT, 'journal line does not match its entry');
 END;
+
+CREATE TRIGGER IF NOT EXISTS quotes_no_update BEFORE UPDATE ON quotes
+BEGIN
+    SELECT RAISE(ABORT, 'quotes is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS quotes_no_delete BEFORE DELETE ON quotes
+BEGIN
+    SELECT RAISE(ABORT, 'quotes is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS quote_instalments_no_update BEFORE UPDATE ON quote_instalments
+BEGIN
+    SELECT RAISE(ABORT, 'quote_instalments is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS quote_instalments_no_delete BEFORE DELETE ON quote_instalments
+BEGIN
+    SELECT RAISE(ABORT, 'quote_instalments is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS invoice_quotes_no_update BEFORE UPDATE ON invoice_quotes
+BEGIN
+    SELECT RAISE(ABORT, 'invoice_quotes is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS invoice_quotes_no_delete BEFORE DELETE ON invoice_quotes
+BEGIN
+    SELECT RAISE(ABORT, 'invoice_quotes is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    key TEXT PRIMARY KEY,
+    request_hash TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    response TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

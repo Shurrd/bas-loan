@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, daysBetween, isValidDate } from "./date";
+import { addDays, addMonths, daysBetween, isValidDate } from "./date";
 
 describe("dates", () => {
     it("counts calendar days across month, year and leap boundaries", () => {
@@ -23,5 +23,14 @@ describe("dates", () => {
         expect(isValidDate("2025-13-01")).toBe(false);
         expect(isValidDate("2025-1-01")).toBe(false);
         expect(isValidDate("2024-02-29")).toBe(true);
+    });
+
+    it("adds days across month, year and leap boundaries", () => {
+        expect(addDays("2024-12-31", 60)).toBe("2025-03-01");
+        expect(addDays("2024-02-28", 2)).toBe("2024-03-01");
+        expect(addDays("2025-02-28", 1)).toBe("2025-03-01");
+        expect(addDays("2025-12-31", 1)).toBe("2026-01-01");
+        expect(addDays("2025-03-10", 0)).toBe("2025-03-10");
+        expect(daysBetween("2025-01-01", addDays("2025-01-01", 365))).toBe(365);
     });
 });

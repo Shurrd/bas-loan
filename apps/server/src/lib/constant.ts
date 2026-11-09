@@ -9,3 +9,6 @@ export const ACCOUNTS = {
     CLIENT_PAYABLE: { name: "Client Payable", type: "liability" },
     UNAPPLIED_CREDIT: { name: "Unapplied Credit", type: "liability" },
 } as const;
+
+// The lists show the newest records only
+export const LIST_LIMIT = 100;

@@ -2,7 +2,7 @@ import type { ACCOUNTS } from "@/lib/constant";
 
 export type AccountCode = keyof typeof ACCOUNTS;
 
-export type EntryKind =
+type EntryKind =
     "disbursement" | "payment" | "invoice_advance" | "invoice_settlement" | "reversal";
 
 export type LedgerLine = {
