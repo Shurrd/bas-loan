@@ -8,8 +8,8 @@ import { saveInvoiceQuote } from "@/services/invoice-quote";
 import { createLoan } from "@/services/loan";
 import { saveQuote } from "@/services/quote";
 
-export const startTestServer = async (db: Db) => {
-    const server = createApp(db).listen(0);
+export const startTestServer = async (db: Db, options?: { clientDir?: string }) => {
+    const server = createApp(db, options).listen(0);
     await once(server, "listening");
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
@@ -26,6 +26,7 @@ export const startTestServer = async (db: Db) => {
         });
 
     return {
+        url,
         get: (path: string) => send("GET", path),
         post: (path: string, body?: unknown, headers?: Record<string, string>) =>
             send("POST", path, body, headers),

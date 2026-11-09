@@ -16,6 +16,26 @@ npm test        # shared, server and client tests
 
 The SQLite file is created at `apps/server/data/lending.db` on first run, with the chart of accounts seeded. Set `DB_PATH` or `PORT` to change either. A database file made by an older version of the app is refused with a message. Delete it and restart.
 
+## Deploy
+
+The app runs as one container: the server also serves the built client. The database is a SQLite file, so it needs a persistent volume and a single machine. A `Dockerfile` and a `fly.toml` for Fly.io are included.
+
+```sh
+fly launch --copy-config --no-deploy   # uses the included fly.toml and Dockerfile
+fly volumes create lending_data --region ams --size 1
+fly deploy
+fly scale count 1
+```
+
+To try the same image locally:
+
+```sh
+docker build -t lending .
+docker run -p 8080:8080 -v lending-data:/data lending   # http://localhost:8080
+```
+
+The server reads `PORT`, `DB_PATH` and `CLIENT_DIR` (a built client to serve). The Dockerfile sets them for the container. There is no login, so anyone with the URL can use the app.
+
 ## API
 
 Kobo is always a string of digits, for example `"120000000"` for ₦1,200,000.00. Rates are decimal strings such as `"18.75"`. Dates are `YYYY-MM-DD`. Validation errors are `400 { "errors": [{ "field", "message" }] }`. Other errors are `{ "message" }`. Every route that posts needs an `Idempotency-Key` header (8 to 128 of `A-Za-z0-9_-`). The same key and body returns the original response with `Idempotent-Replayed: true`. The same key with a different body returns `409`.
