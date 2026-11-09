@@ -1,29 +1,32 @@
-app = "bas-loan"
-primary_region = "ams"
+# fly.toml app configuration file generated for bas-loan on 2026-11-09T13:22:40Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'bas-loan'
+primary_region = 'ams'
 
 [build]
-
-# SQLite lives on this volume, so the app must run as a single machine.
-# Create it once before the first deploy: fly volumes create lending_data --region ams --size 1
 [[mounts]]
-  source = "lending_data"
-  destination = "/data"
+  source = 'lending_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
-    method = "GET"
-    path = "/"
-    timeout = "5s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/'
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory = "512mb"
+  memory_mb = 256
