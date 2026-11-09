@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { Agent, request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "@/app";
 import type { LoanTerms } from "@lending/shared";
@@ -7,6 +8,52 @@ import { createInvoice } from "@/services/invoice";
 import { saveInvoiceQuote } from "@/services/invoice-quote";
 import { createLoan } from "@/services/loan";
 import { saveQuote } from "@/services/quote";
+
+// Node's fetch keeps connections open and can reuse one that a closing test server has just dropped,
+// which fails now and then with "other side closed". These requests never reuse a connection.
+const agent = new Agent({ keepAlive: false });
+
+const call = (
+    url: string,
+    method: string,
+    body?: string,
+    headers: Record<string, string> = {}
+) =>
+    new Promise<Response>((resolve, reject) => {
+        const req = request(
+            url,
+            {
+                method,
+                agent,
+                headers: { "Content-Type": "application/json", ...headers },
+            },
+            (res) => {
+                const chunks: Buffer[] = [];
+                res.on("data", (chunk: Buffer) => chunks.push(chunk));
+                res.on("end", () =>
+                    resolve(
+                        new Response(Buffer.concat(chunks), {
+                            status: res.statusCode,
+                            headers: Object.entries(res.headers).flatMap(
+                                ([name, value]) =>
+                                    value === undefined
+                                        ? []
+                                        : [
+                                              [name, [value].flat().join(", ")] as [
+                                                  string,
+                                                  string,
+                                              ],
+                                          ]
+                            ),
+                        })
+                    )
+                );
+            }
+        );
+        req.on("error", reject);
+        if (body !== undefined) req.write(body);
+        req.end();
+    });
 
 export const startTestServer = async (db: Db, options?: { clientDir?: string }) => {
     const server = createApp(db, options).listen(0);
@@ -17,26 +64,26 @@ export const startTestServer = async (db: Db, options?: { clientDir?: string }) 
         method: string,
         path: string,
         body?: unknown,
-        headers: Record<string, string> = {}
+        headers?: Record<string, string>
     ) =>
-        fetch(url + path, {
+        call(
+            url + path,
             method,
-            headers: { "Content-Type": "application/json", ...headers },
-            body: body === undefined ? undefined : JSON.stringify(body),
-        });
+            body === undefined ? undefined : JSON.stringify(body),
+            headers
+        );
 
     return {
         url,
         get: (path: string) => send("GET", path),
         post: (path: string, body?: unknown, headers?: Record<string, string>) =>
             send("POST", path, body, headers),
-        postRaw: (path: string, text: string) =>
-            fetch(url + path, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: text,
+        postRaw: (path: string, text: string) => call(url + path, "POST", text),
+        close: () =>
+            new Promise((resolve) => {
+                server.close(resolve);
+                server.closeAllConnections();
             }),
-        close: () => new Promise((resolve) => server.close(resolve)),
     };
 };
 

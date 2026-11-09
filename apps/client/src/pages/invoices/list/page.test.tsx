@@ -30,6 +30,7 @@ describe("InvoicesPage", () => {
             "₦800,000.00",
             "₦200,000.00",
             "Settled",
+            "",
         ]);
         expect(cellsOf(screen.getByRole("row", { name: /Invoice 1/ }))).toEqual([
             "Invoice 1",
@@ -39,7 +40,36 @@ describe("InvoicesPage", () => {
             "₦400,000.00",
             "₦100,000.00",
             "Open",
+            "",
         ]);
+    });
+
+    it("has an eye on each row that opens that invoice", async () => {
+        vi.mocked(getInvoices).mockResolvedValue(wireInvoiceSummaries());
+        renderWithProviders(<InvoicesPage />);
+
+        const eye = await screen.findByRole("link", { name: "View invoice 2" });
+        expect(eye).toHaveAttribute("href", "/invoices/2");
+        expect(eye).toHaveAttribute("title", "View invoice 2");
+        expect(screen.getByRole("link", { name: "View invoice 1" })).toHaveAttribute(
+            "href",
+            "/invoices/1"
+        );
+        expect(screen.getAllByRole("link", { name: /^View invoice/ })).toHaveLength(2);
+    });
+
+    it("opens the invoice when the eye is clicked", async () => {
+        vi.mocked(getInvoices).mockResolvedValue(wireInvoiceSummaries());
+        const user = userEvent.setup();
+        renderWithProviders(
+            <Routes>
+                <Route path="/" element={<InvoicesPage />} />
+                <Route path="/invoices/:id" element={<p>Invoice opened</p>} />
+            </Routes>
+        );
+
+        await user.click(await screen.findByRole("link", { name: "View invoice 1" }));
+        expect(await screen.findByText("Invoice opened")).toBeInTheDocument();
     });
 
     it("links each invoice to its page and has a New invoice button", async () => {

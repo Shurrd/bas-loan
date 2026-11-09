@@ -6,6 +6,37 @@ Term loans and invoice financing, with a double-entry ledger. npm workspaces:
 - `apps/server/` Express and SQLite (better-sqlite3)
 - `apps/client/` Vite and React
 
+## Features
+
+**Term loans**
+
+- Quote a loan from a principal, annual rate, term in months and disbursement date, and see the full repayment schedule. It is the reducing-balance annuity from the brief, rounded half-up only where the brief names, and the last instalment clears the balance.
+- Approve a saved quote to disburse it. One quote creates one loan, so a double click or a retry cannot disburse twice.
+- Record a repayment. The server previews how it is allocated: oldest due instalment first, then penalty, fee, interest and principal, with any surplus going to Unapplied Credit. Confirming posts exactly that allocation, and is refused if the loan changed since the preview.
+- Open a loan to see its schedule with paid state, its journal entries, and a statement built from its ledger lines with a running principal balance.
+- A tie-out compares the statement's closing balance with the principal outstanding on the schedule. It shows a match, or turns red with the difference in kobo and naira.
+- Download the statement as a PDF.
+
+**Invoice financing**
+
+- Quote an invoice from a face value, tenor in days and funding date: advance (80%), reserve, discount fee (36% a year on actual days over 365) and due date.
+- Fund a saved quote to post the advance. One quote creates one invoice.
+- Settle an invoice with only a settlement date, since the debtor always pays the face value. The server previews and then posts the late penalty (0.2% of the advance a day) and either the amount payable to the client or the shortfall the client owes. Payable is never shown below zero, and an invoice settles once.
+
+**Ledger**
+
+- A double-entry journal that cannot be edited or deleted. Every entry balances, links to its loan or invoice, and never posts a zero line.
+- Reversing an entry is built and tested on the server. There is no screen for it yet.
+
+**Across the app**
+
+- Lists of loans and invoices, newest first, with an eye on each row to open it. New loan and New invoice open as modals.
+- Money crosses the wire as strings and all money maths uses BigInt. The browser also works out its own preview from the same code, and blocks approval if it differs from the server's quote by a single kobo.
+- Every posting action is idempotent: the same key and body returns the original result, and the same key with a different body returns 409.
+- Both ends validate. Server errors show against the right field, and a server outage shows as a toast.
+- Amounts are typed with thousands separators, dates are picked from a calendar, and dropdowns can be searched.
+- A Docker image and Fly.io config are included to deploy it as one app.
+
 ## Run
 
 ```sh

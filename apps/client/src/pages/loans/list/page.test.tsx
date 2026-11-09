@@ -31,6 +31,7 @@ describe("LoansPage", () => {
             "3 months",
             "₦0.00",
             "Repaid",
+            "",
         ]);
         expect(cellsOf(screen.getByRole("row", { name: /Loan 1/ }))).toEqual([
             "Loan 1",
@@ -40,7 +41,36 @@ describe("LoansPage", () => {
             "6 months",
             "₦1,007,369.74",
             "Active",
+            "",
         ]);
+    });
+
+    it("has an eye on each row that opens that loan", async () => {
+        vi.mocked(getLoans).mockResolvedValue(wireLoanSummaries());
+        renderWithProviders(<LoansPage />);
+
+        const eye = await screen.findByRole("link", { name: "View loan 2" });
+        expect(eye).toHaveAttribute("href", "/loans/2");
+        expect(eye).toHaveAttribute("title", "View loan 2");
+        expect(screen.getByRole("link", { name: "View loan 1" })).toHaveAttribute(
+            "href",
+            "/loans/1"
+        );
+        expect(screen.getAllByRole("link", { name: /^View loan/ })).toHaveLength(2);
+    });
+
+    it("opens the loan when the eye is clicked", async () => {
+        vi.mocked(getLoans).mockResolvedValue(wireLoanSummaries());
+        const user = userEvent.setup();
+        renderWithProviders(
+            <Routes>
+                <Route path="/" element={<LoansPage />} />
+                <Route path="/loans/:id" element={<p>Loan opened</p>} />
+            </Routes>
+        );
+
+        await user.click(await screen.findByRole("link", { name: "View loan 1" }));
+        expect(await screen.findByText("Loan opened")).toBeInTheDocument();
     });
 
     it("keeps the order the server sends, newest first", async () => {

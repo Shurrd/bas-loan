@@ -6,6 +6,7 @@ import Container from "@/components/shared/container";
 import { TopHeader } from "@/components/shared/page-header";
 import Panel from "@/components/shared/panel";
 import StatusBadge from "@/components/shared/status-badge";
+import ViewLink from "@/components/shared/view-link";
 import TableMessage from "@/components/shared/table-message";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
@@ -43,19 +44,22 @@ export default function InvoicesPage() {
                                 <th className={`${headCell} text-right`}>Advance</th>
                                 <th className={`${headCell} text-right`}>Reserve</th>
                                 <th className={headCell}>Status</th>
+                                <th className={`${headCell} text-right`}>
+                                    <span className="sr-only">View</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {isPending && (
-                                <TableMessage colSpan={7}>Loading...</TableMessage>
+                                <TableMessage colSpan={8}>Loading...</TableMessage>
                             )}
                             {error && (
-                                <TableMessage colSpan={7}>
+                                <TableMessage colSpan={8}>
                                     {errorMessage(error)}
                                 </TableMessage>
                             )}
                             {data?.length === 0 && (
-                                <TableMessage colSpan={7}>
+                                <TableMessage colSpan={8}>
                                     No invoices yet. Use New invoice to fund the first
                                     one.
                                 </TableMessage>
@@ -80,6 +84,12 @@ export default function InvoicesPage() {
                                     <td className={cell}>
                                         <StatusBadge
                                             status={invoice.settled ? "Settled" : "Open"}
+                                        />
+                                    </td>
+                                    <td className={`${cell} text-right`}>
+                                        <ViewLink
+                                            to={`/invoices/${invoice.id}`}
+                                            label={`View invoice ${invoice.id}`}
                                         />
                                     </td>
                                 </tr>
